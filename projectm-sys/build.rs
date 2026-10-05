@@ -76,11 +76,19 @@ fn main() {
         let static_crt = env::var("CARGO_CFG_TARGET_FEATURE")
             .map(|features| features.split(',').any(|feature| feature == "crt-static"))
             .unwrap_or(false);
-        let vcpkg_triplet = if static_crt {
-            "x64-windows-static"
-        } else {
-            "x64-windows-static-md"
+        // The target being built for, not the machine building it, so an
+        // arm64 build gets arm64 dependencies from vcpkg.
+        let vcpkg_arch = match env::var("CARGO_CFG_TARGET_ARCH").as_deref() {
+            Ok("aarch64") => "arm64",
+            Ok("x86") => "x86",
+            _ => "x64",
         };
+        let vcpkg_triplet = if static_crt {
+            format!("{vcpkg_arch}-windows-static")
+        } else {
+            format!("{vcpkg_arch}-windows-static-md")
+        };
+        let vcpkg_triplet = vcpkg_triplet.as_str();
         let msvc_runtime = if static_crt {
             "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         } else {
